@@ -36,6 +36,15 @@
           Clear
         </button>
         <div class="tsep"></div>
+        <button onclick="saveProject()" title="Save project" style="display: flex; align-items: center; gap: 4px">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z" /></svg>
+          Save
+        </button>
+        <button onclick="loadProject()" title="Load project" style="display: flex; align-items: center; gap: 4px">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" /></svg>
+          Load
+        </button>
+        <div class="tsep"></div>
         <button class="pri" onclick="showPrintModal()" style="display: flex; align-items: center; gap: 5px">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="vertical-align: middle; flex-shrink: 0"><path d="M12,7V15.25L15.25,12L16,12.66L11.5,17.16L7,12.66L7.75,12L11,15.25V7H12M11.5,22C6.26,22 2,17.75 2,12.5C2,7.25 6.25,3 11.5,3C16.75,3 21,7.25 21,12.5C21,17.75 16.75,22 11.5,22M11.5,21C16.2,21 20,17.19 20,12.5C20,7.81 16.19,4 11.5,4C6.81,4 3,7.81 3,12.5C3,17.19 6.81,21 11.5,21Z" /></svg> PDF
         </button>

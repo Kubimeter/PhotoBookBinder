@@ -210,7 +210,7 @@ function _paintSpread() {
     ctx.fillStyle = '#555'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('(Inner back cover)', PW / 2, PH / 2);
   } else if (!hasDbl) {
-    _paintPage(ctx, li, pgL, 0, 0, PW, PH, ppm);
+    _paintPage(ctx, li, pgL, 0, 0, PW, PH, ppm, 'left');
   }
 
   // spine gradient
@@ -225,7 +225,7 @@ function _paintSpread() {
     ctx.fillStyle = '#555'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('(Inner back cover)', PW + SP + PW / 2, PH / 2);
   } else if (!hasDbl) {
-    _paintPage(ctx, ri, pgR, PW + SP, 0, PW, PH, ppm);
+    _paintPage(ctx, ri, pgR, PW + SP, 0, PW, PH, ppm, 'right');
     if (isCover) {
       ctx.fillStyle = '#c08020';
       ctx.fillRect(PW + SP + 4, 4, 36, 14);
@@ -260,8 +260,8 @@ function _paintSpread() {
   }
 }
 
-function _paintPage(ctx, pageIdx, pg, ox, oy, PW, PH, ppm) {
-  const innerEdge = pageIdx % 2 === 0 ? 'right' : 'left';
+function _paintPage(ctx, pageIdx, pg, ox, oy, PW, PH, ppm, side) {
+  const innerEdge = side === 'left' ? 'right' : 'left';
   const slots = slotGeom(pg.layout || 1, PW, PH, pg.bl, innerEdge, ppm);
   const full = (pg.bl === true || pg.bl === 'full'), inner = (pg.bl === 'inner');
   slots.forEach((sl, si) => {
@@ -1488,6 +1488,142 @@ function hexRgb(h) {
   h = (h || '#fff').replace('#', '');
   if (h.length === 3) h = h.split('').map(c => c + c).join('');
   return { r: parseInt(h.substr(0, 2), 16), g: parseInt(h.substr(2, 2), 16), b: parseInt(h.substr(4, 2), 16) };
+}
+
+
+// save and load project as json
+// photos are stored as data-urls so everything is self-contained in one file
+
+function saveProject() {
+  // build a serializable version of the state
+  // photos: store url (data-url), name — img/fullImg/bitmap are not serializable
+  // pages: store bg, layout, bl, slots (photo url + pan/scale/crop), dbl
+  const data = {
+    version: 1,
+    numLagen: S.numLagen,
+    blaetter: S.blaetter,
+    curSpread: S.curSpread,
+    margin: S.margin,
+    imgScale: S.imgScale,
+    blScope: S.blScope,
+    photos: S.photos.map(p => ({ url: p.url, name: p.name })),
+    pages: S.pages.map(pg => ({
+      bg: pg.bg,
+      layout: pg.layout,
+      bl: pg.bl,
+      slots: pg.slots.map(s => s && s.photo ? {
+        photo: s.photo,
+        pan: s.pan,
+        scale: s.scale,
+        crop: s.crop
+      } : null),
+      dbl: pg.dbl ? {
+        photo: pg.dbl.photo,
+        pan: pg.dbl.pan,
+        scale: pg.dbl.scale,
+        crop: pg.dbl.crop
+      } : null
+    }))
+  };
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'photobook-project.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function loadProject() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.version || !data.photos || !data.pages) {
+        alert('Invalid project file.');
+        return;
+      }
+      await _applyProject(data);
+    } catch (err) {
+      alert('Could not load project: ' + err.message);
+    }
+  };
+  input.click();
+}
+
+async function _applyProject(data) {
+  // clear current state
+  bitmapCache.clear();
+  thumbCache.clear();
+  S.photos = [];
+  _lastPhotosLen = -1;
+  _lastLageCount = -1;
+
+  // restore settings
+  S.numLagen = data.numLagen;
+  S.blaetter = data.blaetter;
+  S.curSpread = data.curSpread || 0;
+  S.margin = data.margin ?? 3;
+  S.imgScale = data.imgScale ?? 100;
+  S.blScope = data.blScope || 'dbl';
+
+  // update toolbar inputs
+  document.getElementById('iLagen').value = S.numLagen;
+  document.getElementById('iBlaetter').value = S.blaetter;
+  document.getElementById('marginSlider').value = S.margin;
+  document.getElementById('marginVal').textContent = S.margin + ' mm';
+  document.getElementById('imgScaleSlider').value = S.imgScale;
+  document.getElementById('imgScaleVal').textContent = S.imgScale + '%';
+
+  // reload photos: each url is a data-url, just load it back as an image
+  const photoMap = new Map(); // url -> photo object
+  for (const p of data.photos) {
+    const img = await loadImg(p.url);
+    if (!img) continue;
+    const displayImg = await makeDisplayImg(img);
+    const photo = { url: p.url, name: p.name, img: displayImg, fullImg: img };
+    bitmapCache.set(p.url, displayImg);
+    S.photos.push(photo);
+    photoMap.set(p.url, photo);
+  }
+
+  // restore pages
+  S.pages = data.pages.map(pg => {
+    const page = mkPage();
+    page.bg = pg.bg || '#fff';
+    page.layout = pg.layout || 1;
+    page.bl = pg.bl ?? false;
+    page.slots = (pg.slots || []).map(s => {
+      if (!s || !s.photo) return {};
+      const photo = photoMap.get(s.photo);
+      if (!photo) return {};
+      return { photo: s.photo, img: photo.img, pan: s.pan || { x: 0, y: 0 }, scale: s.scale ?? 1, crop: s.crop || null };
+    });
+    if (pg.dbl && pg.dbl.photo) {
+      const photo = photoMap.get(pg.dbl.photo);
+      page.dbl = {
+        photo: pg.dbl.photo,
+        img: photo ? photo.img : null,
+        pan: pg.dbl.pan || { x: 0, y: 0 },
+        scale: pg.dbl.scale ?? 1,
+        crop: pg.dbl.crop || null
+      };
+    }
+    return page;
+  });
+
+  // make sure page count matches
+  const n = totalPages();
+  while (S.pages.length < n) S.pages.push(mkPage());
+  S.pages = S.pages.slice(0, n);
+
+  S.curSpread = clamp(S.curSpread, 0, totalSpreads() - 1);
+  markUsedDirty();
+  renderAll();
 }
 
 rebuildBook();
