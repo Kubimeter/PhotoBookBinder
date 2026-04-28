@@ -4,7 +4,8 @@
 
 I enjoy binding photo books by hand, whether Coptic stitch or Japanese binding. Either way: you have multiple signatures, and the correct page order is everything. Currently designed for **A6 format** ... maybe I'll expand it later.
 
-<img width="1919" height="912" alt="grafik" src="https://github.com/user-attachments/assets/32e31f4a-ffe8-488f-a289-bb48a500afb5" />
+<img width="1918" height="875" alt="grafik" src="https://github.com/user-attachments/assets/85545681-7ca0-4792-af99-76b6f0323686" />
+
 
 
 ## What it does
